@@ -1,0 +1,22 @@
+
+package DominoProject;
+import java.awt.*;
+import javax.swing.JFrame;
+import java.io.IOException;
+ 
+public class DominoProjectFrame extends JFrame
+{
+                private static final int WIDTH = 1450;
+                private static final int HEIGHT = 960;
+                public DominoProjectFrame(String x) throws IOException
+                {
+                                super(x);
+                                setSize(WIDTH, HEIGHT);
+                                setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);                                 
+                                add(new Game());
+                                setVisible(true);
+                }
+                
+                
+}
+ 
