@@ -1,0 +1,8 @@
+package DominoProject;
+import java.io.IOException;
+public class DominoProjectRunner {
+       public static void main (String args[]) throws IOException
+       {
+              DominoProjectFrame x = new DominoProjectFrame("DominoProject");
+       }
+}
