@@ -1,0 +1,160 @@
+
+package DominoProject;
+
+import java.awt.*;
+import javax.swing.*;
+import java.awt.image.*;
+import javax.imageio.ImageIO;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.awt.geom.AffineTransform;
+
+public class Domino extends JPanel {
+
+	public enum Orientation {
+		Vertical, Horizontal,
+	}
+
+	private int first, second, locationx, locationy, width, height;
+	private Orientation orientation;
+	private BufferedImage image;
+
+	public Domino(int f, int s) {
+		first = f;
+		second = s;
+		locationx = 0;
+		locationy = 0;
+		width = 80;
+		height = 40;
+		orientation = Orientation.Horizontal;
+	}
+
+	public int First() {
+		return first;
+	}
+
+	public int Second() {
+		return second;
+	}
+
+	public int X() {
+		return locationx;
+	}
+
+	public int Y() {
+		return locationy;
+	}
+
+	public boolean matches(int number) {
+		return first == number || second == number;
+	}
+
+	public void setX(int x) {
+		locationx = x;
+	}
+
+	public void setY(int y) {
+		locationy = y;
+	}
+
+	public void setFirst(int f) {
+		first = f;
+	}
+
+	public void setSecond(int s) {
+		second = s;
+	}
+
+	public int Width() {
+		return width;
+	}
+
+	public int Height() {
+		return height;
+	}
+
+	public int Points() {
+		return first + second;
+	}
+
+	public void setImage(BufferedImage a) {
+		image = resize(a, 100, 50);
+	}
+
+	public void setOrientation(Orientation a) {
+		int tmp;
+		if (orientation != a) {
+			if (a == Orientation.Horizontal) {
+				tmp = first;
+				first = second;
+				second = tmp;
+			}
+			orientation = a;
+
+			try {
+				image = rotateImageByDegrees(image, 90);
+			} catch (Exception e) {
+				return;
+			}
+		}
+		if (a == Orientation.Horizontal) {
+			width = 80;
+			height = 40;
+		} else {
+			width = 40;
+			height = 80;
+		}
+
+	}
+
+	public boolean IsDouble() {
+		return first == second;
+	}
+
+	public Orientation Orientation() {
+		return orientation;
+	}
+
+	public BufferedImage Image() {
+		return image;
+	}
+
+	public String toString() {
+		return "[" + first + "," + second + "]";
+	}
+
+	public static BufferedImage rotateImageByDegrees(BufferedImage img, double angle) {
+
+		double rads = Math.toRadians(angle);
+		double sin = Math.abs(Math.sin(rads)), cos = Math.abs(Math.cos(rads));
+		int w = img.getWidth();
+		int h = img.getHeight();
+		int newWidth = (int) Math.floor(w * cos + h * sin);
+		int newHeight = (int) Math.floor(h * cos + w * sin);
+
+		BufferedImage rotated = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2d = rotated.createGraphics();
+		AffineTransform at = new AffineTransform();
+		at.translate((newWidth - w) / 2, (newHeight - h) / 2);
+
+		int x = w / 2;
+		int y = h / 2;
+
+		at.rotate(rads, x, y);
+		g2d.setTransform(at);
+		g2d.drawImage(img, 0, 0, null);
+		g2d.dispose();
+
+		return rotated;
+	}
+
+	public static BufferedImage resize(BufferedImage img, int height, int width) {
+		Image tmp = img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+		BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2d = resized.createGraphics();
+		g2d.drawImage(tmp, 0, 0, null);
+		g2d.dispose();
+		return resized;
+	}
+}
