@@ -1,0 +1,713 @@
+package DominoProject;
+
+//import DominoProject.Domino.Direction;
+import DominoProject.Domino.Orientation;
+
+import java.awt.*;
+import java.util.Random;
+import javax.swing.*;
+import java.awt.image.*;
+import javax.imageio.ImageIO;
+import java.io.*;
+import java.util.ArrayList;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseEvent;
+
+public class Game extends JPanel implements MouseListener {
+
+	private ArrayList<Player> players;
+	private Player _player, _currentPlayer;
+	private int initialPlayerCount = 4;
+	private Tiles tiles;
+	private ArrayList<Domino> board;
+	private int currntPlayerIdx = 0;
+	private int nRound = 0;
+	private int passCounter = 0;
+	private ArrayList<Domino> edges;
+	private Domino spinner;
+
+	public static final int West = 0;
+	public static final int East = 1;
+	public static final int North = 2;
+	public static final int South = 3;
+
+	public enum MoveAction {
+		MoveNoWhere, MoveWest, MoveEast, MoveNorth, MoveSouth
+	}
+
+	public Game() {
+		newRound();
+
+		addMouseListener(this);
+	}
+
+	public void newRound() {
+		tiles = new Tiles();
+		players = new ArrayList<>();
+		board = new ArrayList<>();
+		nRound++;
+		passCounter = 0;
+
+		edges = null;
+		spinner = null;
+
+		for (int i = 1; i <= initialPlayerCount; i++) {
+			players.add(new Player(tiles, "Payer" + i));
+		}
+
+		Circle();
+
+	}
+
+	public Player Circle() {
+		if (_player == null) {
+			Random random = new Random();
+			int rand = 0;
+			rand = random.nextInt(4);
+			_player = players.get(rand);
+			currntPlayerIdx = rand;
+		} else if (currntPlayerIdx == players.size() - 1) {
+			_player = players.get(0);
+			currntPlayerIdx = 0;
+		} else {
+			for (int i = currntPlayerIdx + 1; i < players.size(); i++) {
+				_player = players.get(i);
+				currntPlayerIdx = i;
+				break;
+			}
+		}
+		_currentPlayer = _player;
+		return _currentPlayer;
+	}
+
+	public void paint(Graphics g) {
+		super.paint(g);
+
+		BufferedImage img;
+		// new game
+		if (IsGameEnd()) {
+			g.setColor(Color.RED);
+			g.drawRect(10, getHeight() - 55, 90, 50);
+			g.drawString("New Round", 20, getHeight() - 25);
+		} else {
+			// pass
+			g.setColor(Color.RED);
+			g.drawRect(10, getHeight() - 55, 90, 50);
+			g.drawString("Pass", 40, getHeight() - 25);
+		}
+
+		for (int i = 0; i < initialPlayerCount; i++) {
+			Player _player = players.get(i);
+
+			int xpos = 0, ypos = 0;
+
+			for (int j = 0; j < _player.getHand().size(); j++) {
+				Domino _domino = _player.getHand().get(j);
+				if ((i + 1) % 2 == 1) { // odd number
+					_domino.setOrientation(Orientation.Vertical);
+					_domino.setX(j * _domino.Width() + getWidth() / 2 - (7 * _domino.Width() / 2));
+					if (i == 0)
+						_domino.setY(getHeight() - (_domino.Height() + 5));
+					else
+						_domino.setY(10);
+				} else {
+					_domino.setOrientation(Orientation.Horizontal);
+					if (i == 3)
+						_domino.setX(getWidth() - (_domino.Width() + 5));
+					else
+						_domino.setX(10);
+					_domino.setY(j * _domino.Height() + getHeight() / 2 - (7 * _domino.Height() / 2));
+				}
+				if (_player.getName() == _currentPlayer.getName() && j == 0) {
+					g.setColor(Color.red);
+					if ((i + 1) % 2 == 1) {
+						g.drawString(_player.getName() + " Turn", _domino.X() - 90, _domino.Y() + 50);
+					} else {
+						g.drawString(_player.getName() + " Turn", _domino.X() + 10, _domino.Y() - 50);
+					}
+				}
+
+				if (j == 0) {
+					if ((i + 1) % 2 == 1) {
+						xpos = _domino.X() - 120;
+						ypos = _domino.Y() + 20;
+					} else {
+						if (i == 3) {
+							xpos = _domino.X() - 20;
+							ypos = _domino.Y() - 2;
+						} else {
+							xpos = _domino.X() - 10;
+							ypos = _domino.Y() - 2;
+						}
+					}
+				}
+
+				try {
+					img = ImageIO.read(Game.class.getResource("/Image/0,0.png"));
+					if (_domino.Orientation() == Orientation.Vertical)
+						img = Domino.rotateImageByDegrees(Domino.resize(img, 100, 50), 90);
+				} catch (Exception e) {
+					System.out.println("File not found!");
+					return;
+				}
+
+				if (_player.getName() == _currentPlayer.getName() || IsGameEnd())
+					g.drawImage(_domino.Image(), _domino.X(), _domino.Y(), _domino.Width(), _domino.Height(), null);
+				else
+					g.drawImage(img, _domino.X(), _domino.Y(), _domino.Width(), _domino.Height(), null);
+			}
+
+			g.setColor(Color.blue);
+			g.drawString(_player.getName() + " Scores:" + _player.Scores(), xpos, ypos);
+
+		}
+		g.setColor(Color.black);
+		g.fillRect(105, 105, getWidth() - 210, getHeight() - 210);
+
+		for (int k = 0; k < board.size(); k++) {
+			Domino _domino = board.get(k);
+			g.drawImage(_domino.Image(), _domino.X(), _domino.Y(), _domino.Width(), _domino.Height(), null);
+		}
+
+		if (IsGameEnd()) {
+			try {
+				img = ImageIO.read(Game.class.getResource("/Image/Game Over.jpg"));
+			} catch (Exception e) {
+				System.out.println("File not found!");
+				return;
+			}
+			g.drawImage(img, getWidth() / 3 + 70, getHeight() / 2 - 100, 400, 260, null);
+
+			int winningScores = 0;
+			int winnernum = 0;
+			Player winner = null;
+
+			if (passCounter == initialPlayerCount) {
+				int lowest = 0;
+				int totalpip = 0;
+				for (int i = 0; i < initialPlayerCount; i++) {
+					Player pl = players.get(i);
+					int pipcount = pl.getPips();
+
+					for (int k = 0; k < pl.getHand().size(); k++) {
+						Domino d = pl.getHand().get(k);
+						pipcount = pipcount + d.First() + d.Second();
+						totalpip = totalpip + d.First() + d.Second();
+					}
+
+					if (pipcount < lowest) {
+						lowest = pipcount;
+						winnernum = i;
+					}
+				}
+				winner = players.get(winnernum);
+				winningScores = totalpip - winner.getPips() + winner.Scores();
+				/*
+				 * int winnerpips = 0; for(int k =0; k<winner.getHand().size(); k++) { Domino d
+				 * = winner.getHand().get(k); winnerpips = winnerpips + d.First()+d.Second(); }
+				 * winningScores = totalpip - winnerpips;
+				 */
+			} else {
+				int ws = 0;
+				for (int i = 0; i < initialPlayerCount; i++) {
+					Player _player = players.get(i);
+					if (_player.Scores() > winningScores) {
+						winner = _player;
+						winnernum = i;
+					}
+				}
+				int pips = 0;
+				for (int i = 0; i < players.size(); i++) {
+					if (players.get(i) != players.get(winnernum))
+						pips += players.get(i).getPips();
+				}
+				winningScores = pips + winner.Scores();
+			}
+			g.setColor(Color.RED);
+			g.drawRect(getWidth() / 3 + 200, getHeight() / 2 + 70, 150, 80);
+			g.drawString("Winner: " + winner.getName(), 700, 500);
+			g.drawString("Winner Scores: " + winningScores, 700, 530);
+		}
+
+	}
+
+	public void mousePressed(MouseEvent e) {
+	}
+
+	public void mouseReleased(MouseEvent e) {
+	}
+
+	public void mouseEntered(MouseEvent e) {
+	}
+
+	public void mouseExited(MouseEvent e) {
+	}
+
+	public boolean IsGameEnd() {
+		if (passCounter == initialPlayerCount)
+			return true; // 4 passes in the row
+
+		for (int i = 0; i < initialPlayerCount; i++) {
+			Player _player = players.get(i);
+			if (_player.Scores() >= 100) // reach scores
+				return true;
+			if (_player.getHand().size() == 0) { // player empty hand
+				/*
+				 * int points = remainPoints(_player); // get other loss players' domino points
+				 * _player.AddPoints(points);
+				 */
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public int remainPoints(Player winner) {
+		int points = 0;
+
+		// get all other loss player points
+		for (int i = 0; i < initialPlayerCount; i++) {
+			Player _player = players.get(i);
+			if (_player.getName() != winner.getName()) {
+
+				for (int j = 0; j < _player.getHand().size(); j++) {
+					Domino _domino = _player.getHand().get(j);
+					points += _domino.First() + _domino.Second();
+				}
+			}
+		}
+		return points;
+	}
+
+	public boolean canPass() {
+		boolean foundmatach = false;
+		if (board.size() == 0)
+			foundmatach = true;
+
+		if (edges != null) {
+			for (int j = 0; j < _player.getHand().size(); j++) {
+				Domino _domino = _player.getHand().get(j);
+
+				for (int i = 0; i < edges.size(); i++) {
+					if (i == West || i == North)
+						if (_domino.First() == edges.get(i).First() || _domino.Second() == edges.get(i).First())
+							foundmatach = true;
+
+					if (i == East || i == South)
+						if (_domino.First() == edges.get(i).Second() || _domino.Second() == edges.get(i).Second())
+							foundmatach = true;
+				}
+			}
+
+		}
+
+		return !foundmatach;
+	}
+
+	public void mouseClicked(MouseEvent e) {
+
+		int x = e.getX();
+		int y = e.getY();
+
+		// pass
+		if (x > 10 && x < 100 && y > getHeight() - 55 && y < getHeight() - 5) {
+			if (IsGameEnd()) {
+				newRound();
+			} else {
+				if (canPass()) 
+				{
+					passCounter++;
+					Circle();
+				}
+			}
+			repaint();
+
+		}
+
+		Domino _selected = null;
+		int _selectedIdx = -1, _playerIdx = -1;
+		Player _actionPlayer = null;
+		for (int i = 0; i < initialPlayerCount; i++) {
+			Player _player = players.get(i);
+			for (int j = 0; j < _player.getHand().size(); j++) {
+				Domino _domino = _player.getHand().get(j);
+				if (x > _domino.X() && x < _domino.X() + _domino.Width() && y > _domino.Y()
+						&& y < _domino.Y() + _domino.Height()) {
+					_selected = _domino;
+					_actionPlayer = _player;
+					_selectedIdx = j;
+					_playerIdx = i;
+					break;
+				}
+			}
+		}
+
+		if (_selected != null && _actionPlayer.getName() == _currentPlayer.getName()) {
+			MoveAction m = CheckMove(_selected.First(), _selected.Second());
+			if (m != MoveAction.MoveNoWhere) {
+				Move(_selected, m);
+				board.add(_selected); // add to board
+				players.get(_playerIdx).AddPoints(UpdateScore());
+				players.get(_playerIdx).getHand().remove(_selectedIdx); // remove from player hand
+				passCounter = 0; // reset pass counter
+				Circle(); // set next current player
+				repaint();
+			}
+		}
+	}
+
+	public int UpdateScore() {
+		int points = 0;
+		if (board.size() == 1) { // only one domino
+			points = edges.get(West).First() + edges.get(West).Second();
+		} else {
+			for (int i = 0; i < edges.size(); i++) {
+				if (i == West)
+					if (edges.get(i).IsDouble())
+						points += edges.get(i).First() * 2;
+					else
+						points += edges.get(i).First();
+				if (i == East)
+					if (edges.get(i).IsDouble())
+						points += edges.get(i).Second() * 2;
+					else
+						points += edges.get(i).Second();
+				if (i == North) {
+					if (edges.get(i).First() == spinner.First() && edges.get(i).Second() == spinner.First()) { // edge
+																												// is
+																												// spinner,
+																												// no
+																												// point
+						points += 0;
+					} else {
+						if (edges.get(i).IsDouble())
+							points += edges.get(i).First() * 2;
+						else
+							points += edges.get(i).First();
+					}
+				}
+				if (i == South) {
+					if (edges.get(i).First() == spinner.First() && edges.get(i).Second() == spinner.First()) { // edge
+																												// is
+																												// spinner,
+																												// no
+																												// point
+						points += 0;
+					} else {
+						if (edges.get(i).IsDouble())
+							points += edges.get(i).Second() * 2;
+						else
+							points += edges.get(i).Second();
+					}
+				}
+
+			}
+		}
+
+		if (points % 5 == 0)
+			return points;
+		else
+			return 0;
+	}
+
+	public boolean canSpinNorthSouth() {
+		boolean isAllowed = false;
+
+		if (spinner != null) {
+			if ((edges.get(West).First() != spinner.First() || edges.get(West).Second() != spinner.First())
+					&& (edges.get(East).First() != spinner.First() || edges.get(East).Second() != spinner.First()))
+				isAllowed = true;
+		}
+
+		return isAllowed;
+	}
+
+	public MoveAction CheckMove(int first, int second) {
+		int i;
+		MoveAction m;
+		if (edges == null) // first
+			return MoveAction.MoveWest;
+		else if ((first == edges.get(West).First() && second == edges.get(East).Second())
+				|| (second == edges.get(West).First() && first == edges.get(East).Second())) // match both west and east
+
+			// pick the best
+			if ((first + edges.get(East).Second()) % 5 == 0 || (second + edges.get(East).Second()) % 5 == 0) {
+				m = MoveAction.MoveWest;
+			} else {
+				m = MoveAction.MoveEast;
+			}
+
+		else if (first == edges.get(West).First() || second == edges.get(West).First()) { // Move to west
+			m = MoveAction.MoveWest;
+		} else if (second == edges.get(East).Second() || first == edges.get(East).Second()) {// move to east
+			m = MoveAction.MoveEast;
+		} else if (canSpinNorthSouth()) {
+			if (edges.size() == 2) {
+				Domino n = Clone(spinner);
+				Domino s = Clone(spinner);
+				edges.add(n);
+				edges.add(s);
+			}
+
+			if (first == edges.get(North).First() || second == edges.get(North).First()) { // Move to north
+				m = MoveAction.MoveNorth;
+			} else if (second == edges.get(South).Second() || first == edges.get(South).Second()) {// move to south
+				m = MoveAction.MoveSouth;
+			} else // Move nowhere
+			{
+				m = MoveAction.MoveNoWhere;
+			}
+		} else // Move nowhere
+		{
+			m = MoveAction.MoveNoWhere;
+		}
+
+		return m;
+	}
+
+	public Domino Clone(Domino domino) {
+		Domino f = new Domino(domino.First(), domino.Second());
+		f.setX(domino.X());
+		f.setY(domino.Y());
+		f.setImage(domino.Image());
+		f.setOrientation(domino.Orientation());
+		f.setFirst(domino.First());
+		f.setSecond(domino.Second());
+
+		return f;
+	}
+
+	public void Move(Domino _selected, MoveAction m) {
+
+		if (_selected.IsDouble()) {
+			if (spinner == null)
+				spinner = _selected;
+		}
+
+		switch (m) {
+		case MoveWest:
+			if (_selected.IsDouble()) {
+				_selected.setOrientation(Orientation.Vertical);
+			} else {
+				_selected.setOrientation(Orientation.Horizontal);
+			}
+
+			if (edges == null) { // first domino
+				_selected.setX(getWidth() / 2 - 50);
+				_selected.setY(getHeight() / 2 - 20);
+
+				Domino w = new Domino(_selected.First(), _selected.Second());
+				w.setX(_selected.X());
+				w.setY(_selected.Y());
+				w.setImage(_selected.Image());
+				w.setOrientation(_selected.Orientation());
+				w.setFirst(_selected.First());
+				w.setSecond(_selected.Second());
+
+				Domino e = new Domino(_selected.First(), _selected.Second());
+				e.setX(_selected.X());
+				e.setY(_selected.Y());
+				e.setImage(_selected.Image());
+				e.setOrientation(_selected.Orientation());
+				e.setFirst(_selected.First());
+				e.setSecond(_selected.Second());
+
+				edges = new ArrayList<>();
+				edges.add(w); // west
+				edges.add(e); // east
+			} else {
+
+				if (edges.get(West).X() - _selected.Width() < 150) {
+					_selected.setOrientation(Orientation.Vertical);
+
+					if (_selected.First() == edges.get(West).First()) {
+						_selected.setOrientation(Orientation.Horizontal);
+						_selected.setOrientation(Orientation.Vertical);
+					}
+
+					if (edges.get(West).Orientation() == Orientation.Horizontal) {
+						_selected.setX(edges.get(West).X() - _selected.Width());
+						_selected.setY(edges.get(West).Y() + edges.get(West).Height() - _selected.Height());
+					} else {
+						_selected.setX(edges.get(West).X());
+						_selected.setY(edges.get(West).Y() - edges.get(West).Height());
+					}
+				} else {
+					if (_selected.Orientation() == Orientation.Horizontal) {
+						if (_selected.First() == edges.get(West).First()) {
+							_selected.setOrientation(Orientation.Vertical);
+							_selected.setOrientation(Orientation.Horizontal);
+						}
+					}
+
+					_selected.setX(edges.get(West).X() - _selected.Width());
+					if (edges.get(West).Orientation() == _selected.Orientation()) {
+						_selected.setY(edges.get(West).Y());
+					} else {
+						if (_selected.Orientation() == Orientation.Horizontal) {
+							_selected.setY(edges.get(West).Y() + 25);
+						} else {
+							_selected.setY(edges.get(West).Y() - 25);
+						}
+					}
+				}
+
+				edges.get(West).setOrientation(_selected.Orientation());
+				edges.get(West).setFirst(_selected.First());
+				edges.get(West).setSecond(_selected.Second());
+				edges.get(West).setX(_selected.X());
+				edges.get(West).setY(_selected.Y());
+
+			}
+			break;
+		case MoveEast:
+
+			if (_selected.IsDouble()) {
+				_selected.setOrientation(Orientation.Vertical);
+			} else {
+				_selected.setOrientation(Orientation.Horizontal);
+			}
+
+			if (edges.get(East).X() + _selected.Width() > getWidth() - 150) {
+				_selected.setOrientation(Orientation.Vertical);
+
+				if (_selected.Second() == edges.get(East).Second()) {
+					_selected.setOrientation(Orientation.Horizontal);
+					_selected.setOrientation(Orientation.Vertical);
+				}
+				if (edges.get(East).Orientation() == Orientation.Vertical) {
+					_selected.setX(edges.get(East).X());
+					_selected.setY(edges.get(East).Y() + _selected.Height());
+				} else {
+					_selected.setX(edges.get(East).X() + edges.get(East).Width());
+					_selected.setY(edges.get(East).Y());
+				}
+			} else {
+				if (_selected.Orientation() == Orientation.Horizontal) {
+					if (_selected.Second() == edges.get(East).Second()) {
+						_selected.setOrientation(Orientation.Vertical);
+						_selected.setOrientation(Orientation.Horizontal);
+					}
+				}
+
+				_selected.setX(edges.get(East).X() + edges.get(East).Width());
+
+				if (edges.get(East).Orientation() == _selected.Orientation()) {
+					_selected.setY(edges.get(East).Y());
+				} else {
+					if (_selected.Orientation() == Orientation.Horizontal) {
+						_selected.setY(edges.get(East).Y() + 25);
+					} else {
+						_selected.setY(edges.get(East).Y() - 25);
+					}
+				}
+			}
+
+			edges.get(East).setOrientation(_selected.Orientation());
+			edges.get(East).setFirst(_selected.First());
+			edges.get(East).setSecond(_selected.Second());
+			edges.get(East).setX(_selected.X());
+			edges.get(East).setY(_selected.Y());
+
+			break;
+		case MoveNorth:
+			if (_selected.IsDouble()) {
+				_selected.setOrientation(Orientation.Horizontal);
+			} else {
+				_selected.setOrientation(Orientation.Vertical);
+			}
+
+			if (edges.get(North).Y() + _selected.Height() < 150) {
+				_selected.setOrientation(Orientation.Horizontal);
+
+				if (_selected.Second() == edges.get(North).First()) {
+					_selected.setOrientation(Orientation.Vertical);
+					_selected.setOrientation(Orientation.Horizontal);
+				}
+				if (edges.get(North).Orientation() == Orientation.Vertical) {
+					_selected.setX(edges.get(North).X());
+					_selected.setY(edges.get(North).Y() + _selected.Height());
+				} else {
+					_selected.setX(edges.get(North).X() + _selected.Width());
+					_selected.setY(edges.get(North).Y());
+				}
+			} else {
+				if (_selected.Orientation() == Orientation.Vertical) {
+					if (_selected.First() == edges.get(North).First()) {
+						_selected.setOrientation(Orientation.Horizontal);
+						_selected.setOrientation(Orientation.Vertical);
+					}
+				}
+
+				_selected.setY(edges.get(North).Y() - _selected.Height());
+
+				if (edges.get(North).Orientation() == _selected.Orientation()) {
+					_selected.setX(edges.get(North).X());
+				} else {
+					if (_selected.Orientation() == Orientation.Horizontal) {
+						_selected.setX(edges.get(North).X() - 25);
+					} else {
+						_selected.setX(edges.get(North).X() + 25);
+					}
+				}
+			}
+
+			edges.get(North).setOrientation(_selected.Orientation());
+			edges.get(North).setFirst(_selected.First());
+			edges.get(North).setSecond(_selected.Second());
+			edges.get(North).setX(_selected.X());
+			edges.get(North).setY(_selected.Y());
+			break;
+		case MoveSouth:
+			if (_selected.IsDouble()) {
+				_selected.setOrientation(Orientation.Horizontal);
+			} else {
+				_selected.setOrientation(Orientation.Vertical);
+			}
+
+			if (edges.get(South).Y() + _selected.Height() > getHeight() - 250) {
+				_selected.setOrientation(Orientation.Horizontal);
+
+				if (_selected.Second() == edges.get(South).First()) {
+					_selected.setOrientation(Orientation.Vertical);
+					_selected.setOrientation(Orientation.Horizontal);
+				}
+				if (edges.get(South).Orientation() == Orientation.Vertical) {
+					_selected.setX(edges.get(South).X());
+					_selected.setY(edges.get(South).Y() + edges.get(South).Height());
+				} else {
+					_selected.setX(edges.get(South).X() + edges.get(South).Width());
+					_selected.setY(edges.get(South).Y());
+				}
+			} else {
+				if (_selected.Orientation() == Orientation.Vertical) {
+					if (_selected.Second() == edges.get(South).Second()) {
+						_selected.setOrientation(Orientation.Horizontal);
+						_selected.setOrientation(Orientation.Vertical);
+					}
+				}
+
+				_selected.setY(edges.get(South).Y() + edges.get(South).Height());
+
+				if (edges.get(South).Orientation() == _selected.Orientation()) {
+					_selected.setX(edges.get(South).X());
+				} else {
+					if (_selected.Orientation() == Orientation.Horizontal) {
+						_selected.setX(edges.get(South).X() - 25);
+					} else {
+						_selected.setX(edges.get(South).X() + 25);
+					}
+				}
+
+			}
+
+			edges.get(South).setOrientation(_selected.Orientation());
+			edges.get(South).setFirst(_selected.First());
+			edges.get(South).setSecond(_selected.Second());
+			edges.get(South).setX(_selected.X());
+			edges.get(South).setY(_selected.Y());
+			break;
+		}
+	}
+
+}
